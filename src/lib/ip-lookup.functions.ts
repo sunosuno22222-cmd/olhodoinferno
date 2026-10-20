@@ -118,6 +118,7 @@ export const lookupIp = createServerFn({ method: "POST" })
         : Promise.resolve(null),
     ]);
 
+    console.log("rdap", !!rdap, rdap?.name);
     const sources = ["ip-api.com"];
     if (whois?.success) sources.push("ipwho.is");
     if (rdap) sources.push("RDAP");
