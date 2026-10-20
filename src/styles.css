@@ -142,3 +142,27 @@
     color: var(--color-foreground);
   }
 }
+
+:root {
+  --abyss: oklch(0.09 0.01 30);
+  --ember: oklch(0.68 0.2 45);
+  --lava: oklch(0.58 0.23 30);
+  --gold: oklch(0.9 0.09 80);
+  --ash: oklch(0.7 0.02 40);
+  --panel: oklch(0.13 0.02 30 / 0.75);
+}
+@theme inline {
+  --color-abyss: var(--abyss);
+  --color-ember: var(--ember);
+  --color-lava: var(--lava);
+  --color-gold: var(--gold);
+  --color-ash: var(--ash);
+  --color-panel: var(--panel);
+  --font-gothic: "Cinzel Decorative", serif;
+  --font-cinzel: "Cinzel", serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+@keyframes scanline { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
+.animate-scanline { animation: scanline 1.6s linear infinite; }
+.glow-ember { box-shadow: 0 0 24px color-mix(in oklch, var(--ember) 45%, transparent), inset 0 0 12px color-mix(in oklch, var(--lava) 18%, transparent); }
+.text-fire { background: linear-gradient(to bottom, var(--gold), var(--ember), var(--lava)); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 0 20px color-mix(in oklch, var(--lava) 70%, transparent)); }
