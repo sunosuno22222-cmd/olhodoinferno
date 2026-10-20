@@ -210,7 +210,7 @@ function Card({ icon, title, children }: { icon: ReactNode; title: string; child
   );
 }
 
-function Row({ k, v }: { k: string; v?: string | number | null | false }) {
+function Row({ k, v }: { k: string; v?: string | number | null | false | undefined }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2 text-sm">
       <dt className="shrink-0 text-ash">{k}</dt>
