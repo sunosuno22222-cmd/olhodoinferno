@@ -45,9 +45,10 @@ const DOMAIN = /^(?=.{1,253}$)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
 async function safeJson(url: string, init?: RequestInit): Promise<any | null> {
   try {
     const r = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return null;
+    if (!r.ok) { console.warn("lookup source failed", url, r.status); return null; }
     return await r.json();
-  } catch {
+  } catch (e) {
+    console.warn("lookup source error", url, e);
     return null;
   }
 }
