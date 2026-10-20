@@ -110,7 +110,7 @@ export const lookupIp = createServerFn({ method: "POST" })
     const ptr = ptrName(ip);
 
     const [rdap, dns] = await Promise.all([
-      safeJson(`https://rdap.org/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json" } }),
+      safeJson(`https://rdap.arin.net/registry/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json", "user-agent": "OlhosDoDiabo/1.0" } }),
       ptr
         ? safeJson(`https://cloudflare-dns.com/dns-query?name=${ptr}&type=PTR`, {
             headers: { accept: "application/dns-json" },
