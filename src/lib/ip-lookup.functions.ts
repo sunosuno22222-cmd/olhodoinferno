@@ -44,7 +44,7 @@ const DOMAIN = /^(?=.{1,253}$)([a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
 
 async function safeJson(url: string, init?: RequestInit): Promise<any | null> {
   try {
-    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
+    const r = await fetch(url, { ...init, signal: AbortSignal.timeout(8000) });
     if (!r.ok) return null;
     return await r.json();
   } catch {
@@ -109,7 +109,7 @@ export const lookupIp = createServerFn({ method: "POST" })
     const ptr = ptrName(ip);
 
     const [rdap, dns] = await Promise.all([
-      safeJson(`https://rdap.org/ip/${ip}`),
+      safeJson(`https://rdap.org/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json" } }),
       ptr
         ? safeJson(`https://cloudflare-dns.com/dns-query?name=${ptr}&type=PTR`, {
             headers: { accept: "application/dns-json" },
