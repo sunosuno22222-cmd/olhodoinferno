@@ -210,11 +210,11 @@ function Card({ icon, title, children }: { icon: ReactNode; title: string; child
   );
 }
 
-function Row({ k, v }: { k: string; v?: string | number | null }) {
+function Row({ k, v }: { k: string; v?: string | number | null | false }) {
   return (
     <div className="flex items-start justify-between gap-4 py-2 text-sm">
       <dt className="shrink-0 text-ash">{k}</dt>
-      <dd className="break-all text-right font-mono text-gold">{v ?? <span className="text-ash/40">—</span>}</dd>
+      <dd className="break-all text-right font-mono text-gold">{v || v === 0 ? v : <span className="text-ash/40">—</span>}</dd>
     </div>
   );
 }
