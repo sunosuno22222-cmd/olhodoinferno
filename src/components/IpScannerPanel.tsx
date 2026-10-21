@@ -1,16 +1,21 @@
 import { useState, type ReactNode } from "react";
 import {
-  Search, Globe, MapPin, Building2, Clock, Network, ShieldAlert, Crosshair, Copy, Check, ArrowLeft, Radar, Loader2,
+  Search, Globe, MapPin, Building2, Clock, Network, ShieldAlert, Crosshair, Copy, Check, ArrowLeft, Radar, Loader2, Phone,
 } from "lucide-react";
 import { DemonicEyeCanvas } from "./DemonicEyeCanvas";
 import { lookupIp, type IpReport } from "@/lib/ip-lookup.functions";
+import { lookupPhone, type PhoneReport } from "@/lib/phone-lookup.functions";
 
 interface Props { onReturnToPortal?: () => void }
 
+type Mode = "ip" | "phone";
+
 export function IpScannerPanel({ onReturnToPortal }: Props) {
+  const [mode, setMode] = useState<Mode>("ip");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<IpReport | null>(null);
+  const [phoneData, setPhoneData] = useState<PhoneReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -19,16 +24,35 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const r = await lookupIp({ data: { target } });
-      setData(r);
-      setInput(r.resolvedFrom ?? r.ip);
-      setHistory((h) => [r.ip, ...h.filter((x) => x !== r.ip)].slice(0, 6));
+      if (mode === "phone") {
+        const r = await lookupPhone({ data: { target } });
+        setPhoneData(r);
+        setData(null);
+        setInput(r.e164 ?? target);
+        setHistory((h) => [r.e164 ?? target, ...h.filter((x) => x !== r.e164)].slice(0, 6));
+      } else {
+        const r = await lookupIp({ data: { target } });
+        setData(r);
+        setPhoneData(null);
+        setInput(r.resolvedFrom ?? r.ip);
+        setHistory((h) => [r.ip, ...h.filter((x) => x !== r.ip)].slice(0, 6));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao consultar.");
       setData(null);
+      setPhoneData(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const switchMode = (m: Mode) => {
+    if (m === mode) return;
+    setMode(m);
+    setInput("");
+    setError(null);
+    setData(null);
+    setPhoneData(null);
   };
 
   const copy = async () => {
