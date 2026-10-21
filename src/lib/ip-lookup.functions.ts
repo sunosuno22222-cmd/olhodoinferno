@@ -128,10 +128,19 @@ export const lookupIp = createServerFn({ method: "POST" })
     const abuse = rdap?.entities
       ?.flatMap((e: any) => [e, ...(e.entities ?? [])])
       .find((e: any) => e.roles?.includes("abuse"));
-    const abuseEmail = abuse?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3];
+    const abuseEmail =
+      abuse?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3] ??
+      rdap?.entities
+        ?.flatMap((e: any) => [e, ...(e.entities ?? [])])
+        .map((e: any) => e?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3])
+        .find((v: any) => typeof v === "string" && v.includes("@"));
     const reg = rdap?.events?.find((e: any) => e.eventAction === "registration")?.eventDate;
     const range =
-      rdap?.startAddress && rdap?.endAddress ? `${rdap.startAddress} – ${rdap.endAddress}` : undefined;
+      rdap?.startAddress && rdap?.endAddress
+        ? `${rdap.startAddress} – ${rdap.endAddress}`
+        : rdap?.cidr0_cidrs?.length
+          ? rdap.cidr0_cidrs.map((c: any) => (c.v4prefix ? `${c.v4prefix}/${c.length}` : `${c.v6prefix}/${c.length}`)).join(", ")
+          : undefined;
 
     const offsetSec: number | undefined = ipApi?.offset ?? whois?.timezone?.offset;
     const utcOffset =
