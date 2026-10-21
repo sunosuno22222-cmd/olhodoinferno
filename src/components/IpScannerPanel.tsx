@@ -237,6 +237,51 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
             </p>
           </section>
         )}
+
+        {phoneData && (
+          <section className="flex flex-col gap-4 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col gap-4 rounded-3xl border border-ember/40 bg-panel p-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-ember/50 bg-abyss">
+                  <Phone className="h-6 w-6 text-ember" />
+                </span>
+                <div>
+                  <div className="font-mono text-xl font-semibold text-gold sm:text-2xl">{phoneData.international ?? phoneData.input}</div>
+                  <div className="text-sm text-ash">
+                    {[phoneData.countryName, phoneData.typeLabel].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {phoneData.valid ? <Badge tone="ember">Válido</Badge> : <Badge tone="lava">Inválido</Badge>}
+                {phoneData.typeLabel && <Badge>{phoneData.typeLabel}</Badge>}
+                <button onClick={copy} className="flex items-center gap-1 rounded-full border border-lava/30 px-3 py-1 font-mono text-[11px] text-ash hover:text-gold">
+                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} JSON
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card icon={<Phone className="h-4 w-4" />} title="Número">
+                <Row k="Formato internacional" v={phoneData.international} />
+                <Row k="Formato nacional" v={phoneData.national} />
+                <Row k="E.164" v={phoneData.e164} />
+                <Row k="Link tel:" v={phoneData.uri} />
+              </Card>
+
+              <Card icon={<Globe className="h-4 w-4" />} title="Origem">
+                <Row k="País" v={phoneData.countryName && `${phoneData.countryName} (${phoneData.country})`} />
+                <Row k="DDI" v={phoneData.callingCode} />
+                <Row k="Tipo de linha" v={phoneData.typeLabel} />
+                <Row k="Número possível" v={phoneData.possible ? "Sim" : "Não"} />
+              </Card>
+            </div>
+
+            <p className="text-center font-mono text-[10px] text-ash/60">
+              A consulta mostra apenas dados públicos do número (país, formato e tipo de linha). Nome, CPF e outros dados pessoais não são acessíveis por lei.
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );
