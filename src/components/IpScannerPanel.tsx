@@ -1,16 +1,21 @@
 import { useState, type ReactNode } from "react";
 import {
-  Search, Globe, MapPin, Building2, Clock, Network, ShieldAlert, Crosshair, Copy, Check, ArrowLeft, Radar, Loader2,
+  Search, Globe, MapPin, Building2, Clock, Network, ShieldAlert, Crosshair, Copy, Check, ArrowLeft, Radar, Loader2, Phone,
 } from "lucide-react";
 import { DemonicEyeCanvas } from "./DemonicEyeCanvas";
 import { lookupIp, type IpReport } from "@/lib/ip-lookup.functions";
+import { lookupPhone, type PhoneReport } from "@/lib/phone-lookup.functions";
 
 interface Props { onReturnToPortal?: () => void }
 
+type Mode = "ip" | "phone";
+
 export function IpScannerPanel({ onReturnToPortal }: Props) {
+  const [mode, setMode] = useState<Mode>("ip");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<IpReport | null>(null);
+  const [phoneData, setPhoneData] = useState<PhoneReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
@@ -19,21 +24,41 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const r = await lookupIp({ data: { target } });
-      setData(r);
-      setInput(r.resolvedFrom ?? r.ip);
-      setHistory((h) => [r.ip, ...h.filter((x) => x !== r.ip)].slice(0, 6));
+      if (mode === "phone") {
+        const r = await lookupPhone({ data: { target } });
+        setPhoneData(r);
+        setData(null);
+        setInput(r.e164 ?? target);
+        setHistory((h) => [r.e164 ?? target, ...h.filter((x) => x !== r.e164)].slice(0, 6));
+      } else {
+        const r = await lookupIp({ data: { target } });
+        setData(r);
+        setPhoneData(null);
+        setInput(r.resolvedFrom ?? r.ip);
+        setHistory((h) => [r.ip, ...h.filter((x) => x !== r.ip)].slice(0, 6));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao consultar.");
       setData(null);
+      setPhoneData(null);
     } finally {
       setLoading(false);
     }
   };
 
+  const switchMode = (m: Mode) => {
+    if (m === mode) return;
+    setMode(m);
+    setInput("");
+    setError(null);
+    setData(null);
+    setPhoneData(null);
+  };
+
   const copy = async () => {
-    if (!data) return;
-    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    const payload = mode === "phone" ? phoneData : data;
+    if (!payload) return;
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -66,16 +91,30 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
           </div>
           <div>
             <h1 className="text-fire font-gothic text-3xl font-black uppercase tracking-[0.12em] sm:text-5xl">Rastreador</h1>
-            <p className="mt-2 font-cinzel text-xs tracking-widest text-ash">IP ou domínio — o olho vê tudo</p>
+            <p className="mt-2 font-cinzel text-xs tracking-widest text-ash">IP, domínio ou telefone — o olho vê tudo</p>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) run(input.trim()); else setError("Digite um IP ou domínio."); }} className="flex w-full max-w-2xl flex-col gap-2.5 sm:flex-row">
+          <div className="flex rounded-full border border-lava/40 bg-panel p-1 backdrop-blur">
+            {(["ip", "phone"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMode(m)}
+                className={`flex items-center gap-2 rounded-full px-6 py-2 font-cinzel text-xs font-bold uppercase tracking-widest transition ${mode === m ? "glow-ember border border-ember bg-gradient-to-b from-lava/40 to-abyss text-gold" : "border border-transparent text-ash hover:text-gold"}`}
+              >
+                {m === "ip" ? <Globe className="h-3.5 w-3.5" /> : <Phone className="h-3.5 w-3.5" />}
+                {m === "ip" ? "IP / Domínio" : "Celular"}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) run(input.trim()); else setError(mode === "phone" ? "Digite um número de telefone." : "Digite um IP ou domínio."); }} className="flex w-full max-w-2xl flex-col gap-2.5 sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ember" />
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="8.8.8.8 ou google.com"
+                placeholder={mode === "phone" ? "+55 11 99999-9999" : "8.8.8.8 ou google.com"}
                 className="glow-ember w-full rounded-2xl border border-ember/50 bg-panel py-3.5 pl-11 pr-4 font-mono text-sm text-gold outline-none backdrop-blur transition placeholder:text-ash/50 focus:border-gold"
               />
             </div>
@@ -83,9 +122,11 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
               <button type="submit" disabled={loading} className="glow-ember flex flex-1 items-center justify-center gap-2 rounded-2xl border border-ember bg-gradient-to-b from-lava/40 to-abyss px-6 py-3.5 font-cinzel text-sm font-bold uppercase tracking-widest text-gold transition hover:border-gold active:scale-95 disabled:opacity-50">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />} Rastrear
               </button>
-              <button type="button" disabled={loading} onClick={() => run("me")} title="Meu IP" className="flex items-center gap-2 rounded-2xl border border-lava/40 bg-panel px-4 py-3.5 font-mono text-xs text-ash transition hover:border-ember hover:text-gold disabled:opacity-50">
-                <Crosshair className="h-4 w-4" /> Meu IP
-              </button>
+              {mode === "ip" && (
+                <button type="button" disabled={loading} onClick={() => run("me")} title="Meu IP" className="flex items-center gap-2 rounded-2xl border border-lava/40 bg-panel px-4 py-3.5 font-mono text-xs text-ash transition hover:border-ember hover:text-gold disabled:opacity-50">
+                  <Crosshair className="h-4 w-4" /> Meu IP
+                </button>
+              )}
             </div>
           </form>
 
@@ -193,6 +234,51 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
 
             <p className="text-center font-mono text-[10px] text-ash/60">
               Fontes: {data.sources.join(" · ")} — a localização por IP é aproximada (geralmente cidade/provedor).
+            </p>
+          </section>
+        )}
+
+        {phoneData && (
+          <section className="flex flex-col gap-4 pb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col gap-4 rounded-3xl border border-ember/40 bg-panel p-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 items-center justify-center rounded-full border border-ember/50 bg-abyss">
+                  <Phone className="h-6 w-6 text-ember" />
+                </span>
+                <div>
+                  <div className="font-mono text-xl font-semibold text-gold sm:text-2xl">{phoneData.international ?? phoneData.input}</div>
+                  <div className="text-sm text-ash">
+                    {[phoneData.countryName, phoneData.typeLabel].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {phoneData.valid ? <Badge tone="ember">Válido</Badge> : <Badge tone="lava">Inválido</Badge>}
+                {phoneData.typeLabel && <Badge>{phoneData.typeLabel}</Badge>}
+                <button onClick={copy} className="flex items-center gap-1 rounded-full border border-lava/30 px-3 py-1 font-mono text-[11px] text-ash hover:text-gold">
+                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} JSON
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card icon={<Phone className="h-4 w-4" />} title="Número">
+                <Row k="Formato internacional" v={phoneData.international} />
+                <Row k="Formato nacional" v={phoneData.national} />
+                <Row k="E.164" v={phoneData.e164} />
+                <Row k="Link tel:" v={phoneData.uri} />
+              </Card>
+
+              <Card icon={<Globe className="h-4 w-4" />} title="Origem">
+                <Row k="País" v={phoneData.countryName && `${phoneData.countryName} (${phoneData.country})`} />
+                <Row k="DDI" v={phoneData.callingCode} />
+                <Row k="Tipo de linha" v={phoneData.typeLabel} />
+                <Row k="Número possível" v={phoneData.possible ? "Sim" : "Não"} />
+              </Card>
+            </div>
+
+            <p className="text-center font-mono text-[10px] text-ash/60">
+              A consulta mostra apenas dados públicos do número (país, formato e tipo de linha). Nome, CPF e outros dados pessoais não são acessíveis por lei.
             </p>
           </section>
         )}

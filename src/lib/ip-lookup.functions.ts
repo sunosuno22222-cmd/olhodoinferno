@@ -97,9 +97,10 @@ export const lookupIp = createServerFn({ method: "POST" })
 
     const fields =
       "status,message,continent,country,countryCode,regionName,city,district,zip,lat,lon,timezone,offset,currency,isp,org,as,asname,reverse,mobile,proxy,hosting,query";
-    const [ipApi, whois] = await Promise.all([
+    const [ipApi, whois, ipapiCo] = await Promise.all([
       safeJson(`http://ip-api.com/json/${target}?fields=${fields}`),
       safeJson(`https://ipwho.is/${target}`),
+      safeJson(`https://ipapi.co/${target}/json/`),
     ]);
 
     if ((!ipApi || ipApi.status === "fail") && (!whois || whois.success === false)) {
@@ -110,7 +111,7 @@ export const lookupIp = createServerFn({ method: "POST" })
     const ptr = ptrName(ip);
 
     const [rdap, dns] = await Promise.all([
-      safeJson(`https://rdap.arin.net/registry/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json", "user-agent": "OlhosDoDiabo/1.0" } }),
+      safeJson(`https://rdap.org/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json", "user-agent": "OlhosDoDiabo/1.0" } }),
       ptr
         ? safeJson(`https://cloudflare-dns.com/dns-query?name=${ptr}&type=PTR`, {
             headers: { accept: "application/dns-json" },
@@ -118,19 +119,28 @@ export const lookupIp = createServerFn({ method: "POST" })
         : Promise.resolve(null),
     ]);
 
-    console.log("rdap", !!rdap, rdap?.name);
     const sources = ["ip-api.com"];
     if (whois?.success) sources.push("ipwho.is");
+    if (ipapiCo && !ipapiCo.error) sources.push("ipapi.co");
     if (rdap) sources.push("RDAP");
     if (dns) sources.push("Cloudflare DNS");
 
     const abuse = rdap?.entities
       ?.flatMap((e: any) => [e, ...(e.entities ?? [])])
       .find((e: any) => e.roles?.includes("abuse"));
-    const abuseEmail = abuse?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3];
+    const abuseEmail =
+      abuse?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3] ??
+      rdap?.entities
+        ?.flatMap((e: any) => [e, ...(e.entities ?? [])])
+        .map((e: any) => e?.vcardArray?.[1]?.find((v: any) => v[0] === "email")?.[3])
+        .find((v: any) => typeof v === "string" && v.includes("@"));
     const reg = rdap?.events?.find((e: any) => e.eventAction === "registration")?.eventDate;
     const range =
-      rdap?.startAddress && rdap?.endAddress ? `${rdap.startAddress} – ${rdap.endAddress}` : undefined;
+      rdap?.startAddress && rdap?.endAddress
+        ? `${rdap.startAddress} – ${rdap.endAddress}`
+        : rdap?.cidr0_cidrs?.length
+          ? rdap.cidr0_cidrs.map((c: any) => (c.v4prefix ? `${c.v4prefix}/${c.length}` : `${c.v6prefix}/${c.length}`)).join(", ")
+          : undefined;
 
     const offsetSec: number | undefined = ipApi?.offset ?? whois?.timezone?.offset;
     const utcOffset =
@@ -163,19 +173,19 @@ export const lookupIp = createServerFn({ method: "POST" })
       version: ip.includes(":") ? "IPv6" : "IPv4",
       geo: {
         continent: ipApi?.continent || whois?.continent,
-        country: ipApi?.country || whois?.country,
-        countryCode: ipApi?.countryCode || whois?.country_code,
+        country: ipApi?.country || whois?.country || ipapiCo?.country_name,
+        countryCode: ipApi?.countryCode || whois?.country_code || ipapiCo?.country_code,
         flag: whois?.flag?.emoji,
-        capital: whois?.capital,
-        callingCode: whois?.calling_code ? `+${whois.calling_code}` : undefined,
-        region: ipApi?.regionName || whois?.region,
-        city: ipApi?.city || whois?.city,
+        capital: whois?.capital || ipapiCo?.country_capital || undefined,
+        callingCode: whois?.calling_code ? `+${whois.calling_code}` : ipapiCo?.country_calling_code || undefined,
+        region: ipApi?.regionName || whois?.region || ipapiCo?.region,
+        city: ipApi?.city || whois?.city || ipapiCo?.city,
         district: ipApi?.district || undefined,
-        zip: ipApi?.zip || whois?.postal || undefined,
-        lat: ipApi?.lat ?? whois?.latitude,
-        lon: ipApi?.lon ?? whois?.longitude,
+        zip: ipApi?.zip || whois?.postal || ipapiCo?.postal || undefined,
+        lat: ipApi?.lat ?? whois?.latitude ?? ipapiCo?.latitude,
+        lon: ipApi?.lon ?? whois?.longitude ?? ipapiCo?.longitude,
       },
-      time: { timezone: tz, utcOffset, localTime, currency: ipApi?.currency },
+      time: { timezone: tz, utcOffset, localTime, currency: ipApi?.currency || ipapiCo?.currency },
       network: {
         isp: ipApi?.isp || whois?.connection?.isp,
         org: ipApi?.org || whois?.connection?.org,
