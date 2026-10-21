@@ -56,8 +56,9 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
   };
 
   const copy = async () => {
-    if (!data) return;
-    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    const payload = mode === "phone" ? phoneData : data;
+    if (!payload) return;
+    await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -90,16 +91,30 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
           </div>
           <div>
             <h1 className="text-fire font-gothic text-3xl font-black uppercase tracking-[0.12em] sm:text-5xl">Rastreador</h1>
-            <p className="mt-2 font-cinzel text-xs tracking-widest text-ash">IP ou domínio — o olho vê tudo</p>
+            <p className="mt-2 font-cinzel text-xs tracking-widest text-ash">IP, domínio ou telefone — o olho vê tudo</p>
           </div>
 
-          <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) run(input.trim()); else setError("Digite um IP ou domínio."); }} className="flex w-full max-w-2xl flex-col gap-2.5 sm:flex-row">
+          <div className="flex rounded-full border border-lava/40 bg-panel p-1 backdrop-blur">
+            {(["ip", "phone"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMode(m)}
+                className={`flex items-center gap-2 rounded-full px-6 py-2 font-cinzel text-xs font-bold uppercase tracking-widest transition ${mode === m ? "glow-ember border border-ember bg-gradient-to-b from-lava/40 to-abyss text-gold" : "border border-transparent text-ash hover:text-gold"}`}
+              >
+                {m === "ip" ? <Globe className="h-3.5 w-3.5" /> : <Phone className="h-3.5 w-3.5" />}
+                {m === "ip" ? "IP / Domínio" : "Celular"}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={(e) => { e.preventDefault(); if (input.trim()) run(input.trim()); else setError(mode === "phone" ? "Digite um número de telefone." : "Digite um IP ou domínio."); }} className="flex w-full max-w-2xl flex-col gap-2.5 sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-ember" />
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="8.8.8.8 ou google.com"
+                placeholder={mode === "phone" ? "+55 11 99999-9999" : "8.8.8.8 ou google.com"}
                 className="glow-ember w-full rounded-2xl border border-ember/50 bg-panel py-3.5 pl-11 pr-4 font-mono text-sm text-gold outline-none backdrop-blur transition placeholder:text-ash/50 focus:border-gold"
               />
             </div>
@@ -107,9 +122,11 @@ export function IpScannerPanel({ onReturnToPortal }: Props) {
               <button type="submit" disabled={loading} className="glow-ember flex flex-1 items-center justify-center gap-2 rounded-2xl border border-ember bg-gradient-to-b from-lava/40 to-abyss px-6 py-3.5 font-cinzel text-sm font-bold uppercase tracking-widest text-gold transition hover:border-gold active:scale-95 disabled:opacity-50">
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Radar className="h-4 w-4" />} Rastrear
               </button>
-              <button type="button" disabled={loading} onClick={() => run("me")} title="Meu IP" className="flex items-center gap-2 rounded-2xl border border-lava/40 bg-panel px-4 py-3.5 font-mono text-xs text-ash transition hover:border-ember hover:text-gold disabled:opacity-50">
-                <Crosshair className="h-4 w-4" /> Meu IP
-              </button>
+              {mode === "ip" && (
+                <button type="button" disabled={loading} onClick={() => run("me")} title="Meu IP" className="flex items-center gap-2 rounded-2xl border border-lava/40 bg-panel px-4 py-3.5 font-mono text-xs text-ash transition hover:border-ember hover:text-gold disabled:opacity-50">
+                  <Crosshair className="h-4 w-4" /> Meu IP
+                </button>
+              )}
             </div>
           </form>
 
