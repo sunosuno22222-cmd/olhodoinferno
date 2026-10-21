@@ -97,9 +97,10 @@ export const lookupIp = createServerFn({ method: "POST" })
 
     const fields =
       "status,message,continent,country,countryCode,regionName,city,district,zip,lat,lon,timezone,offset,currency,isp,org,as,asname,reverse,mobile,proxy,hosting,query";
-    const [ipApi, whois] = await Promise.all([
+    const [ipApi, whois, ipapiCo] = await Promise.all([
       safeJson(`http://ip-api.com/json/${target}?fields=${fields}`),
       safeJson(`https://ipwho.is/${target}`),
+      safeJson(`https://ipapi.co/${target}/json/`),
     ]);
 
     if ((!ipApi || ipApi.status === "fail") && (!whois || whois.success === false)) {
@@ -110,7 +111,7 @@ export const lookupIp = createServerFn({ method: "POST" })
     const ptr = ptrName(ip);
 
     const [rdap, dns] = await Promise.all([
-      safeJson(`https://rdap.arin.net/registry/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json", "user-agent": "OlhosDoDiabo/1.0" } }),
+      safeJson(`https://rdap.org/ip/${ip}`, { headers: { accept: "application/rdap+json, application/json", "user-agent": "OlhosDoDiabo/1.0" } }),
       ptr
         ? safeJson(`https://cloudflare-dns.com/dns-query?name=${ptr}&type=PTR`, {
             headers: { accept: "application/dns-json" },
@@ -118,9 +119,9 @@ export const lookupIp = createServerFn({ method: "POST" })
         : Promise.resolve(null),
     ]);
 
-    console.log("rdap", !!rdap, rdap?.name);
     const sources = ["ip-api.com"];
     if (whois?.success) sources.push("ipwho.is");
+    if (ipapiCo && !ipapiCo.error) sources.push("ipapi.co");
     if (rdap) sources.push("RDAP");
     if (dns) sources.push("Cloudflare DNS");
 
